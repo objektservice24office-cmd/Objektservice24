@@ -1,5 +1,0 @@
-# /robots.txt
-User-agent: *
-Allow: /
-
-Sitemap: https://objekt-service-24.com/sitemap.xml
