@@ -181,10 +181,9 @@
         "Mit freundlichen Grüßen"
       ].join("\n");
 
-      pushEvent("lead_form_send_via_email_client", { channel: "mailto" });
+      pushEvent("lead_form_submit_netlify", {});
 
-      window.location.href =
-        `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+form.submit();
     });
   }
 })();
