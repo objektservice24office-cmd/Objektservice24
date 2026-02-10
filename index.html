@@ -600,7 +600,13 @@
         </div>
 
         <div class="contact">
-          <form id="leadForm" novalidate>
+   <form id="leadForm" name="lead" method="POST" data-netlify="true" netlify-honeypot="bot-field" novalidate>
+  <input type="hidden" name="form-name" value="lead">
+
+  <p style="display:none">
+    <label>Don’t fill this out: <input name="bot-field"></label>
+  </p>
+
             <h3>Unverbindliche Objektprüfung</h3>
             <p>Nach dem Absenden wird die Anfrage erfasst. Je nach technischer Konfiguration erfolgt Versand über Formular oder als E-Mail.</p>
 
