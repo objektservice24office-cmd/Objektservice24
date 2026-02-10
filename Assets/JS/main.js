@@ -2,22 +2,25 @@
 (() => {
   "use strict";
 
-  const CONTACT_EMAIL = "objektservice24.office@gmail.com";
   const CONSENT_KEY = "objektservice24_consent_v1";
 
-  // Footer Jahr
-  const yearEl = document.getElementById("year");
-  if (yearEl) yearEl.textContent = String(new Date().getFullYear());
-
-  // DataLayer Helper
+  // ===== helpers =====
   window.dataLayer = window.dataLayer || [];
   function pushEvent(eventName, params) {
-    try { window.dataLayer.push(Object.assign({ event: eventName }, params || {})); } catch (_) {}
+    try {
+      window.dataLayer.push(Object.assign({ event: eventName }, params || {}));
+    } catch (_) {}
   }
 
-  // Mobile Menü
-  const burger = document.getElementById("burger");
-  const panel  = document.getElementById("panel");
+  const $ = (id) => document.getElementById(id);
+
+  // ===== footer year =====
+  const yearEl = $("year");
+  if (yearEl) yearEl.textContent = String(new Date().getFullYear());
+
+  // ===== mobile menu =====
+  const burger = $("burger");
+  const panel = $("panel");
   let lastFocus = null;
 
   function setPanel(open) {
@@ -41,18 +44,14 @@
       setPanel(!isOpen);
     });
 
-    panel.querySelectorAll("a").forEach(a =>
-      a.addEventListener("click", () => setPanel(false))
-    );
+    panel.querySelectorAll("a").forEach((a) => a.addEventListener("click", () => setPanel(false)));
 
     document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && burger.getAttribute("aria-expanded") === "true") {
-        setPanel(false);
-      }
+      if (e.key === "Escape" && burger.getAttribute("aria-expanded") === "true") setPanel(false);
     });
   }
 
-  // Klick-Events
+  // ===== click tracking =====
   document.addEventListener("click", (e) => {
     const el = e.target.closest("a,button");
     if (!el) return;
@@ -60,23 +59,26 @@
     if (el.matches('a[href^="tel:"]')) pushEvent("lead_phone_click", { channel: "telephone" });
     if (el.matches('a[href^="mailto:"]')) pushEvent("lead_email_click", { channel: "email" });
 
-    if (el.dataset && el.dataset.cta) {
-      pushEvent("call_to_action_click", { name: el.dataset.cta, text: (el.textContent || "").trim() });
+    const cta = el.dataset && el.dataset.cta ? String(el.dataset.cta) : "";
+    if (cta) {
+      pushEvent("call_to_action_click", {
+        name: cta,
+        text: (el.textContent || "").trim()
+      });
     }
   });
 
-  // Consent Banner + Consent Update (gtag Consent Mode)
-  const consentEl = document.getElementById("consent");
-  const acceptBtn = document.getElementById("accept");
-  const declineBtn = document.getElementById("decline");
+  // ===== consent banner =====
+  const consentEl = $("consent");
+  const acceptBtn = $("accept");
+  const declineBtn = $("decline");
 
   function showConsent() {
     if (!consentEl) return;
     consentEl.style.display = "block";
     consentEl.setAttribute("aria-hidden", "false");
     pushEvent("consent_banner_shown", {});
-    const btn = acceptBtn || declineBtn;
-    if (btn) btn.focus();
+    (acceptBtn || declineBtn)?.focus?.();
   }
 
   function hideConsent() {
@@ -87,65 +89,68 @@
 
   function applyConsent(state) {
     localStorage.setItem(CONSENT_KEY, state);
+    const granted = state === "granted";
 
-    if (state === "granted") {
-      if (typeof window.gtag === "function") {
-        window.gtag("consent", "update", {
-          ad_storage: "denied",
-          analytics_storage: "granted",
-          ad_user_data: "denied",
-          ad_personalization: "denied"
-        });
-      } else {
-        // Fallback: zumindest als Event in die dataLayer
-        pushEvent("consent_update", { analytics_storage: "granted" });
-      }
-      pushEvent("consent_granted", {});
+    if (typeof window.gtag === "function") {
+      window.gtag("consent", "update", {
+        ad_storage: "denied",
+        analytics_storage: granted ? "granted" : "denied",
+        ad_user_data: "denied",
+        ad_personalization: "denied",
+        functionality_storage: "granted",
+        security_storage: "granted"
+      });
     } else {
-      if (typeof window.gtag === "function") {
-        window.gtag("consent", "update", {
-          ad_storage: "denied",
-          analytics_storage: "denied",
-          ad_user_data: "denied",
-          ad_personalization: "denied"
-        });
-      } else {
-        pushEvent("consent_update", { analytics_storage: "denied" });
-      }
-      pushEvent("consent_denied", {});
+      pushEvent("consent_update", { analytics_storage: granted ? "granted" : "denied" });
     }
 
+    pushEvent(granted ? "consent_granted" : "consent_denied", {});
     hideConsent();
   }
 
-  const stored = localStorage.getItem(CONSENT_KEY);
-  if (!stored && consentEl) showConsent();
-  else if (stored && consentEl) applyConsent(stored);
+  const storedConsent = localStorage.getItem(CONSENT_KEY);
+  if (!storedConsent && consentEl) showConsent();
 
   if (acceptBtn) acceptBtn.addEventListener("click", () => applyConsent("granted"));
   if (declineBtn) declineBtn.addEventListener("click", () => applyConsent("denied"));
 
-  // Formular: mailto (wie dein Ansatz – zuverlässig wird’s erst mit Serverless)
-  const form = document.getElementById("leadForm");
-  const err  = document.getElementById("formError");
-  const isValidEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+  // If consent was stored, apply silently without showing banner
+  if (storedConsent && consentEl) {
+    // do NOT show banner; just update consent
+    applyConsent(storedConsent);
+  }
+
+  // ===== Netlify Forms: validation only (NO manual submit, NO mailto) =====
+  const form = $("leadForm");
+  const err = $("formError");
+
+  const isValidEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v || "").trim());
+
+  function getFormData(formEl) {
+    return Object.fromEntries(new FormData(formEl).entries());
+  }
+
+  function validateLead(data) {
+    return (
+      String(data.firma || "").trim().length > 0 &&
+      String(data.ansprechpartner || "").trim().length > 0 &&
+      String(data.telefon || "").trim().length > 0 &&
+      isValidEmail(data.email) &&
+      String(data.adresse || "").trim().length > 0 &&
+      String(data.objektart || "").trim().length > 0 &&
+      String(data.module || "").trim().length > 0
+    );
+  }
 
   if (form) {
     form.addEventListener("submit", (e) => {
-      e.preventDefault();
       if (err) err.style.display = "none";
 
-      const data = Object.fromEntries(new FormData(form).entries());
-      const ok =
-        String(data.firma || "").trim().length > 0 &&
-        String(data.ansprechpartner || "").trim().length > 0 &&
-        String(data.telefon || "").trim().length > 0 &&
-        isValidEmail(String(data.email || "").trim()) &&
-        String(data.adresse || "").trim().length > 0 &&
-        String(data.objektart || "").trim().length > 0 &&
-        String(data.module || "").trim().length > 0;
+      const data = getFormData(form);
+      const ok = validateLead(data);
 
       if (!ok) {
+        e.preventDefault(); // block only on invalid
         if (err) {
           err.style.display = "block";
           err.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -154,36 +159,12 @@
         return;
       }
 
-      pushEvent("lead_form_valid", { module: data.module, objectType: data.objektart });
-
-      const subject = `ObjektService24 – Anfrage Objektprüfung | ${data.adresse} | ${data.objektart}`;
-      const body = [
-        "Guten Tag,",
-        "",
-        "ich bitte um eine unverbindliche Objektprüfung und Angebotserstellung.",
-        "",
-        "Kontaktdaten",
-        `Hausverwaltung oder Firma: ${data.firma}`,
-        `Ansprechpartner: ${data.ansprechpartner}`,
-        `Telefon: ${data.telefon}`,
-        `E-Mail: ${data.email}`,
-        "",
-        "Objekt",
-        `Adresse: ${data.adresse}`,
-        `Objektart: ${data.objektart}`,
-        `Gewünschte Module: ${data.module}`,
-        "",
-        "Kurzbeschreibung",
-        `${data.nachricht ? data.nachricht : "-"}`,
-        "",
-        "Bitte Rückmeldung mit nächstem Schritt (Besichtigung, Unterlagenbedarf, Angebot).",
-        "",
-        "Mit freundlichen Grüßen"
-      ].join("\n");
-
-      pushEvent("lead_form_submit_netlify", {});
-
-form.submit();
+      // let browser POST to Netlify; redirect handled by action="/danke.html"
+      pushEvent("lead_form_submit_netlify", {
+        module: String(data.module || ""),
+        objectType: String(data.objektart || "")
+      });
     });
   }
 })();
+
