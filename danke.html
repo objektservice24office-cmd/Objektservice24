@@ -1,13 +1,69 @@
 <!doctype html>
 <html lang="de">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Anfrage gesendet – ObjektService24</title>
+  <meta name="robots" content="noindex,nofollow" />
+
+  <link rel="stylesheet" href="Assets/CSS/style.css" />
 </head>
 <body>
-  <h1>Danke. Anfrage ist eingegangen.</h1>
-  <p>Wir melden uns kurzfristig.</p>
-  <p><a href="/">Zurück zur Startseite</a></p>
+
+  <div class="topbar" role="banner">
+    <div class="container">
+      <div class="nav">
+        <a class="brand" href="/" aria-label="ObjektService24 Start">
+          <img class="brand-icon" src="Assets/IMG/logo-primary.png" alt="ObjektService24 Logo" width="52" height="52" loading="eager" />
+          <div class="brand-text">
+            <div class="name">ObjektService24</div>
+            <div class="claim">Objektservice für Wohn- und Gewerbeimmobilien</div>
+          </div>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <main class="soft" style="min-height:70vh;display:flex;align-items:center">
+    <div class="container">
+      <div class="card" style="max-width:780px;margin:0 auto">
+        <h1 style="margin-top:0">Anfrage ist eingegangen.</h1>
+        <p>Wir melden uns kurzfristig mit den nächsten Schritten (Rückfragen, Besichtigung, Leistungsdefinition, Angebot).</p>
+
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:18px">
+          <a class="btn primary" href="/">Zur Startseite</a>
+          <a class="btn" href="/#kontakt">Weitere Anfrage</a>
+          <a class="btn" href="tel:+4915161412870">Direkt anrufen</a>
+        </div>
+
+        <div class="badge" style="margin-top:16px">
+          Hinweis: Bitte prüfen Sie ggf. Spam/Junk, falls Sie keine Rückmeldung erhalten.
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer role="contentinfo">
+    <div class="container">
+      <div class="footer">
+        <div>
+          <div class="f-title">ObjektService24</div>
+          <div>Objektservice für Wohn- und Gewerbeimmobilien</div>
+          <div class="copy">© <span id="year"></span> ObjektService24 · Berlin</div>
+        </div>
+        <div class="f-links">
+          <a href="/">Start</a>
+          <a href="/impressum.html">Impressum</a>
+          <a href="/datenschutz.html">Datenschutz</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    const y = document.getElementById("year");
+    if (y) y.textContent = String(new Date().getFullYear());
+  </script>
+
 </body>
 </html>
