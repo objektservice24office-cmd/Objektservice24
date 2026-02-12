@@ -1,125 +1,123 @@
-// /assets/js/main.js
 (() => {
   "use strict";
 
-  const CONSENT_KEY = "objektservice24_consent_v1";
+  // ---------- Helpers ----------
+  const $ = (sel, root = document) => root.querySelector(sel);
+  const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+  const on = (el, ev, fn, opts) => el && el.addEventListener(ev, fn, opts);
 
-  // Jahr im Footer
-  const yearEl = document.getElementById("year");
-  if (yearEl) yearEl.textContent = String(new Date().getFullYear());
+  // ---------- Footer Year ----------
+  const year = $("#year");
+  if (year) year.textContent = String(new Date().getFullYear());
 
-  // dataLayer helper (GTM)
-  window.dataLayer = window.dataLayer || [];
-  const pushEvent = (event, params = {}) => {
-    try { window.dataLayer.push({ event, ...params }); } catch (_) {}
+  // ---------- Mobile Menu (Burger) ----------
+  const burger = $("#burger");
+  const panel = $("#panel");
+
+  const setMenu = (open) => {
+    if (!burger || !panel) return;
+    burger.setAttribute("aria-expanded", open ? "true" : "false");
+    panel.setAttribute("aria-hidden", open ? "false" : "true");
+    panel.classList.toggle("open", open);
+    document.documentElement.classList.toggle("no-scroll", open);
   };
 
-  // Mobile Menü
-  const burger = document.getElementById("burger");
-  const panel = document.getElementById("panel");
-  let lastFocus = null;
-
-  const setPanel = (open) => {
-    if (!panel || !burger) return;
-    panel.style.display = open ? "block" : "none";
-    panel.setAttribute("aria-hidden", String(!open));
-    burger.setAttribute("aria-expanded", String(open));
-
-    if (open) {
-      lastFocus = document.activeElement;
-      const firstLink = panel.querySelector("a");
-      if (firstLink) firstLink.focus();
-    } else if (lastFocus && typeof lastFocus.focus === "function") {
-      lastFocus.focus();
-    }
-  };
-
-  if (burger && panel) {
-    burger.addEventListener("click", () => {
-      const isOpen = burger.getAttribute("aria-expanded") === "true";
-      setPanel(!isOpen);
-    });
-
-    panel.querySelectorAll("a").forEach((a) =>
-      a.addEventListener("click", () => setPanel(false))
-    );
-
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && burger.getAttribute("aria-expanded") === "true") {
-        setPanel(false);
-      }
-    });
-  }
-
-  // Klick-Events (Telefon/Mail/CTA)
-  document.addEventListener("click", (e) => {
-    const el = e.target.closest("a,button");
-    if (!el) return;
-
-    if (el.matches('a[href^="tel:"]')) pushEvent("lead_phone_click", { channel: "telephone" });
-    if (el.matches('a[href^="mailto:"]')) pushEvent("lead_email_click", { channel: "email" });
-
-    if (el.dataset && el.dataset.cta) {
-      pushEvent("call_to_action_click", { name: el.dataset.cta, text: (el.textContent || "").trim() });
-    }
+  on(burger, "click", () => {
+    const open = burger.getAttribute("aria-expanded") !== "true";
+    setMenu(open);
   });
 
-  // Consent Banner
-  const consentEl = document.getElementById("consent");
-  const acceptBtn = document.getElementById("accept");
-  const declineBtn = document.getElementById("decline");
+  // close menu when clicking a panel link
+  $$("#panel a").forEach((a) => on(a, "click", () => setMenu(false)));
 
-  const showConsent = () => {
-    if (!consentEl) return;
-    consentEl.style.display = "block";
-    consentEl.setAttribute("aria-hidden", "false");
-    pushEvent("consent_banner_shown");
-    (acceptBtn || declineBtn)?.focus?.();
+  // close menu on ESC
+  on(document, "keydown", (e) => {
+    if (e.key === "Escape") setMenu(false);
+  });
+
+  // close menu if click outside (panel open)
+  on(document, "click", (e) => {
+    if (!burger || !panel) return;
+    const open = burger.getAttribute("aria-expanded") === "true";
+    if (!open) return;
+    const t = e.target;
+    if (panel.contains(t) || burger.contains(t)) return;
+    setMenu(false);
+  });
+
+  // ---------- Consent (GTM consent mode) ----------
+  const consentBox = $("#consent");
+  const btnAccept = $("#accept");
+  const btnDecline = $("#decline");
+
+  const CONSENT_KEY = "os24_consent_v1"; // stores "granted" | "denied"
+
+  const setConsentUI = (show) => {
+    if (!consentBox) return;
+    consentBox.setAttribute("aria-hidden", show ? "false" : "true");
+    consentBox.classList.toggle("open", show);
   };
 
-  const hideConsent = () => {
-    if (!consentEl) return;
-    consentEl.style.display = "none";
-    consentEl.setAttribute("aria-hidden", "true");
-  };
+  const applyConsent = (state /* "granted" | "denied" */) => {
+    try {
+      localStorage.setItem(CONSENT_KEY, state);
+    } catch (_) {}
 
-  const applyConsent = (state) => {
-    localStorage.setItem(CONSENT_KEY, state);
-
-    const granted = state === "granted";
+    // Only call gtag if it exists (GTM may load later)
     if (typeof window.gtag === "function") {
       window.gtag("consent", "update", {
         ad_storage: "denied",
-        analytics_storage: granted ? "granted" : "denied",
         ad_user_data: "denied",
         ad_personalization: "denied",
+        analytics_storage: state === "granted" ? "granted" : "denied",
+        functionality_storage: "granted",
+        security_storage: "granted",
       });
-    } else {
-      pushEvent("consent_update", { analytics_storage: granted ? "granted" : "denied" });
     }
-
-    pushEvent(granted ? "consent_granted" : "consent_denied");
-    hideConsent();
   };
 
-  const stored = localStorage.getItem(CONSENT_KEY);
-  if (!stored && consentEl) showConsent();
-  if (stored && consentEl) applyConsent(stored);
+  // show banner only if not decided
+  let stored = null;
+  try {
+    stored = localStorage.getItem(CONSENT_KEY);
+  } catch (_) {}
+  if (!stored) setConsentUI(true);
 
-  acceptBtn?.addEventListener("click", () => applyConsent("granted"));
-  declineBtn?.addEventListener("click", () => applyConsent("denied"));
+  on(btnAccept, "click", () => {
+    applyConsent("granted");
+    setConsentUI(false);
+  });
 
-  // ===== Netlify Form: nur validieren, Submit NICHT kaputtmachen =====
-  const form = document.getElementById("leadForm");
-  const err = document.getElementById("formError");
+  on(btnDecline, "click", () => {
+    applyConsent("denied");
+    setConsentUI(false);
+  });
 
-  const isValidEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v || "").trim());
+  // ---------- Form Validation (Netlify-compatible) ----------
+  const form = $("#leadForm");
+  const err = $("#formError");
+
+  const isValidEmail = (v) =>
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v || "").trim());
+
+  const showError = (msg) => {
+    if (!err) return;
+    err.textContent = msg || "Bitte alle Pflichtfelder (*) korrekt ausfüllen.";
+    err.style.display = "block";
+  };
+
+  const hideError = () => {
+    if (!err) return;
+    err.style.display = "none";
+  };
 
   if (form) {
-    form.addEventListener("submit", (e) => {
-      if (err) err.style.display = "none";
+    // IMPORTANT: do NOT hijack submit when valid
+    on(form, "submit", (e) => {
+      hideError();
 
-      const data = Object.fromEntries(new FormData(form).entries());
+      const fd = new FormData(form);
+      const data = Object.fromEntries(fd.entries());
 
       const ok =
         String(data.firma || "").trim().length > 0 &&
@@ -132,20 +130,14 @@
 
       if (!ok) {
         e.preventDefault();
-        if (err) {
-          err.style.display = "block";
-          err.scrollIntoView({ behavior: "smooth", block: "center" });
-        }
-        pushEvent("lead_form_error", { reason: "missing_required_fields" });
+        showError("Bitte alle Pflichtfelder (*) korrekt ausfüllen.");
         return;
       }
 
-      // Erfolg: NICHT preventDefault, NICHT form.submit()
-      pushEvent("lead_form_submit", {
-        module: String(data.module || ""),
-        objectType: String(data.objektart || ""),
-      });
+      // no preventDefault here -> Netlify handles POST + redirect
     });
+
+    // optional: hide error while typing
+    ["input", "change"].forEach((ev) => on(form, ev, hideError, true));
   }
 })();
-
